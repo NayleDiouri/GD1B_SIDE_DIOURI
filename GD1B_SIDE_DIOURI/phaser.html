@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" /><title>Mon 1er jeu Phaser</title>
+<script
+src="//cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.js"></script>
+<style type="text/css"> body { margin: 0; }</style>
+</head>
+<body>
+<script type="text/javascript">
+    var config = {
+        type: Phaser.AUTO,
+        width: 1450, height: 745,
+        physics: {
+            default: 'arcade',
+            arcade: {
+                gravity: { y: 1000 },
+                debug: false
+        }},
+        scene: {preload: preload, create: create, update: update }
+    };
+
+    new Phaser.Game(config);
+
+    function preload(){
+        this.load.image("background", "background.png");
+        this.load.image("ViePerso", "ViePerso.png");
+        this.load.image("eau", "eau.png");
+        this.load.image("surface", "surface.png");
+        this.load.image("Phaser_assets", "assets_img.png");
+        this.load.image("potion", "potion.png")
+        this.load.image("tapis_roulant_13","tapis_roulant_13.png")
+        this.load.image("tapis_roulant_11","tapis_roulant_11.png")
+        this.load.image("plateforme_debut", "plateforme_debut.png")
+        this.load.image("plateforme_fin", "plateforme_fin.png")
+        this.load.image("plateforme_liquide_rayure", "plateforme_liquide_rayure.png")
+        this.load.image("plateforme_liquide", "plateforme_liquide.png")
+        this.load.image("plateforme_milieu_rayure", "plateforme_milieu_rayure.png")
+        this.load.image("plateforme_milieu", "plateforme_milieu.png")
+        this.load.image("piques", "piques.png")
+        this.load.tilemapTiledJSON("carte", "map.json");
+        this.load.spritesheet('perso','perso.png',
+        { frameWidth: 48, frameHeight: 32    });
+    }
+
+
+    var gameOver= false;
+    var onTapisRoulant= false;
+    var onTapisRoulant2=false;
+    var onTapisRoulant3=false;
+    var scorePotion;
+    var score = 0;
+
+
+
+    function create (){
+        this.add.image(800,800  ,"background");
+
+        const carteDuNiveau = this.add.tilemap("carte");
+        const tileset = carteDuNiveau.addTilesetImage(
+          "assets",
+          "Phaser_assets"
+        ); 
+        const tileset2 = carteDuNiveau.addTilesetImage(
+          "tapis_roulant",
+          "tapis_roulant_13"
+        ); 
+        const tileset3 = carteDuNiveau.addTilesetImage(
+          "tapis_roulant_2",
+          "tapis_roulant_11"
+        );  
+        const plateformes = carteDuNiveau.createLayer(
+          "plateformes",
+          tileset
+        );
+        const boutons = carteDuNiveau.createLayer(
+          "boutons",
+          tileset
+        );
+        
+        plateformes.setCollisionByProperty({ estSolide: true });  
+        this.player = this.physics.add.sprite(50,1300, 'perso');
+        this.player.setScale(0.5)
+        this.player.setCollideWorldBounds(true);   
+        this.physics.add.collider(this.player, plateformes);
+        this.physics.world.setBounds(0, 0, 1600, 1600); 
+        this.cameras.main.setBounds(0, 0, 1600, 1600);
+        this.cameras.main.zoom = 2.5;
+        this.cameras.main.startFollow(this.player);
+        this.anims.create({
+        key: 'left',
+        frames: this.anims.generateFrameNumbers('perso', {start:0,end:12}),
+        frameRate: 20,
+        });
+        this.anims.create({
+        key: 'turn',
+        frames: [ { key: 'perso', frame: 0 } ],
+        frameRate: 20
+        });
+        this.anims.create({
+        key: 'right',
+        frames: this.anims.generateFrameNumbers('perso', {start:13,end:25}),
+        frameRate: 20,
+        });
+        this.cursors = this.input.keyboard.createCursorKeys();
+        this.clavier = this.input.keyboard.addKeys('A,D,SPACE');
+        
+        
+        piques = this.physics.add.group();
+        this.physics.add.collider(this.player, piques,PiquesDegats,null,this)
+                calque_piques = carteDuNiveau.getObjectLayer('piques');
+                calque_piques.objects.forEach( calque_piques => {
+                    const POPiques = piques.create( calque_piques.x + 16, calque_piques.y -12, "piques").body.setAllowGravity(false).setImmovable(true);
+                });
+       
+        plateforme_debut = this.physics.add.group();
+        this.physics.add.collider(this.player,plateforme_debut);
+            calque_plateforme_debut = carteDuNiveau.getObjectLayer('plateformes_debut');
+            calque_plateforme_debut.objects.forEach( calque_plateforme_debut => {
+                 const POPlateforme_debut = plateforme_debut.create( calque_plateforme_debut.x + 16, calque_plateforme_debut.y -26, "plateforme_debut").body.setAllowGravity(false).setImmovable(true);
+                });
+       
+        plateforme_fin = this.physics.add.group();
+        this.physics.add.collider(this.player,plateforme_fin);
+            calque_plateforme_fin = carteDuNiveau.getObjectLayer('plateformes_fin');
+            calque_plateforme_fin.objects.forEach( calque_plateforme_fin => {
+                 const POPlateforme_fin = plateforme_fin.create( calque_plateforme_fin.x + 16, calque_plateforme_fin.y -26, "plateforme_fin").body.setAllowGravity(false).setImmovable(true);
+                });
+
+        plateforme_liquide_rayure = this.physics.add.group();
+        this.physics.add.collider(this.player,plateforme_liquide_rayure);
+            calque_plateforme_liquide_rayure = carteDuNiveau.getObjectLayer('plateformes_liquide_rayure');
+            calque_plateforme_liquide_rayure.objects.forEach( calque_plateforme_liquide_rayure => {
+                 const POPlateforme_liquide_rayure = plateforme_liquide_rayure.create( calque_plateforme_liquide_rayure.x + 16, calque_plateforme_liquide_rayure.y -26, "plateforme_liquide_rayure").body.setAllowGravity(false).setImmovable(true);
+                });
+                
+        plateforme_liquide = this.physics.add.group();
+        this.physics.add.collider(this.player,plateforme_liquide);
+            calque_plateforme_liquide = carteDuNiveau.getObjectLayer('plateformes_liquide');
+            calque_plateforme_liquide.objects.forEach( calque_plateforme_liquide => {
+                 const POPlateforme_liquide = plateforme_liquide.create( calque_plateforme_liquide.x + 16, calque_plateforme_liquide.y -26, "plateforme_liquide").body.setAllowGravity(false).setImmovable(true);
+                });
+
+        plateforme_milieu = this.physics.add.group();
+        this.physics.add.collider(this.player,plateforme_milieu);
+            calque_plateforme_milieu = carteDuNiveau.getObjectLayer('plateformes_milieu');
+            calque_plateforme_milieu.objects.forEach( calque_plateforme_milieu => {
+                 const POPlateforme_milieu = plateforme_milieu.create( calque_plateforme_milieu.x + 16, calque_plateforme_milieu.y -26, "plateforme_milieu").body.setAllowGravity(false).setImmovable(true);
+                });
+        
+        plateforme_milieu_rayure = this.physics.add.group();
+        this.physics.add.collider(this.player,plateforme_milieu_rayure);
+            calque_plateforme_milieu_rayure = carteDuNiveau.getObjectLayer('plateformes_milieu_rayure');
+            calque_plateforme_milieu_rayure.objects.forEach( calque_plateforme_milieu_rayure => {
+                 const POPlateforme_milieu_rayure = plateforme_milieu_rayure.create( calque_plateforme_milieu_rayure.x + 16, calque_plateforme_milieu_rayure.y -26, "plateforme_milieu_rayure").body.setAllowGravity(false).setImmovable(true);
+                });
+                
+        tapis_roulant_13_1 = this.physics.add.group();
+        this.physics.add.collider(this.player,tapis_roulant_13_1, TapisRoulant131, null, this);
+            calque_tapis_roulant_13_1 = carteDuNiveau.getObjectLayer('tapis_roulant_13_1');
+            calque_tapis_roulant_13_1.objects.forEach( calque_tapis_roulant_13_1 => {
+                 const POPlateforme_milieu_rayure = tapis_roulant_13_1.create( calque_tapis_roulant_13_1.x + 208, calque_tapis_roulant_13_1.y -16, "tapis_roulant_13").body.setAllowGravity(false).setImmovable(true);
+                });
+
+        tapis_roulant_13_2 = this.physics.add.group();
+        this.physics.add.collider(this.player,tapis_roulant_13_2,TapisRoulant132, null, this);
+            calque_tapis_roulant_13_2 = carteDuNiveau.getObjectLayer('tapis_roulant_13_2');
+            calque_tapis_roulant_13_2.objects.forEach( calque_tapis_roulant_13_2 => {
+                 const POPlateforme_milieu_rayure = tapis_roulant_13_2.create( calque_tapis_roulant_13_2.x + 208, calque_tapis_roulant_13_2.y -16, "tapis_roulant_13").body.setAllowGravity(false).setImmovable(true);
+                });
+                
+                
+        tapis_roulant_11 = this.physics.add.group();
+        this.physics.add.collider(this.player,tapis_roulant_11,TapisRoulant11,null, this);
+            calque_tapis_roulant_11 = carteDuNiveau.getObjectLayer('tapis_roulant_11');
+            calque_tapis_roulant_11.objects.forEach( calque_tapis_roulant_11 => {
+                 const POPlateforme_milieu_rayure = tapis_roulant_11.create( calque_tapis_roulant_11.x +176 , calque_tapis_roulant_11.y -16  , "tapis_roulant_11").body.setAllowGravity(false).setImmovable(true);
+                });
+                
+        potion = this.physics.add.group();
+        this.physics.add.collider(this.player,potion,collectPotion,null, this);
+            calque_potion = carteDuNiveau.getObjectLayer('potions');
+            calque_potion.objects.forEach( calque_potion => {
+                 const POPlateforme_milieu_rayure = potion.create( calque_potion.x +16 , calque_potion.y -16  , "potion").body.setAllowGravity(false).setImmovable(true);
+                });
+
+        eau = this.physics.add.group();
+        this.physics.add.collider(this.player, eau,EauDegats,null,this)
+                calque_eau = carteDuNiveau.getObjectLayer('eau');
+                calque_eau.objects.forEach( calque_eau => {
+                    const POPiques = eau.create( calque_eau.x + 16, calque_eau.y -16, "eau").body.setAllowGravity(false).setImmovable(true);
+                });
+
+        surface = this.physics.add.group();
+                calque_surface = carteDuNiveau.getObjectLayer('surface');
+                calque_surface.objects.forEach( calque_surface => {
+                    const POPiques = surface.create( calque_surface.x + 16, calque_surface.y -16, "surface").body.setAllowGravity(false).setImmovable(true);
+                });
+        
+                
+        scorePotion=this.add.text(445,230,'score: 0',{fontSize:'32px',fill:'#FFF'});
+        scorePotion.setScrollFactor(0);
+        scorePotion.setScale(0.7); 
+
+        this.ViePerso = this.add.image(470, 270, 'ViePerso');
+        this.ViePerso.setScale(0.5)
+        this.ViePerso.setScrollFactor(0);
+            
+       
+    }
+
+function PiquesDegats(player,piques){
+        this.physics.pause();
+        player.setTint(0xff0000);
+        gameOver = true;
+
+    }
+
+function EauDegats(player,eau){
+        this.physics.pause();
+        player.setTint(0xff0000);
+        gameOver = true;
+
+    }
+
+function TapisRoulant11(player, tapis_roulant_11){    
+        onTapisRoulant = true;
+        setTimeout(() => {
+            onTapisRoulant=false;
+        }, 10);
+        
+    }
+function TapisRoulant131(player, tapis_roulant_13_1){    
+        onTapisRoulant2 = true;
+        setTimeout(() => {
+            onTapisRoulant2=false;
+        }, 10);
+        
+    }
+function TapisRoulant132(player, tapis_roulant_13_2){    
+        onTapisRoulant3 = true;
+        setTimeout(() => {
+            onTapisRoulant3=false;
+        }, 10);
+        
+    }
+function collectPotion(player, potion){
+        potion.disableBody(true, true); 
+        score += 1; 
+    scorePotion.setText('Score: ' + score); 
+    }
+    
+
+
+
+    walljump =false;
+
+function update(){
+
+
+
+
+
+
+
+    if (gameOver == true){
+        gameOver = false;
+        this.scene.restart();
+    }
+
+    if (this.cursors.left.isDown && !this.onWallGauche && !walljump){
+
+            
+        this.player.setVelocityX(-200); 
+        this.player.anims.play('left', true);
+        
+
+
+    }
+
+    else if (this.onWallGauche && this.cursors.up.isDown){
+        walljump=true;
+        this.player.setVelocityY(-450);
+        this.player.setVelocityX(170);
+        this.player.anims.play('right', true);
+        this.onWallGauche=false;
+        setTimeout(() => {
+            walljump=false;
+        }, 470);
+
+
+    }
+    
+    else if (this.cursors.right.isDown && !this.onWallGauche && !walljump){
+        this.player.setVelocityX(200); 
+        this.player.anims.play('right', true); 
+    }
+
+
+    else if (this.onWallDroit && this.cursors.up.isDown){
+        walljump=true;
+        this.player.setVelocityY(-450);
+        this.player.setVelocityX(-170); 
+        this.player.anims.play('left', true);
+        this.onWallDroit=false;
+        setTimeout(() => {
+            walljump=false;
+        }, 470);
+
+
+    }
+
+    else if (!walljump){ 
+        if(onTapisRoulant == true){
+            this.player.setVelocityX(300);
+        }
+        else if(onTapisRoulant2 == true){
+            this.player.setVelocityX(300);
+        }
+        else if(onTapisRoulant3 == true){
+            this.player.setVelocityX(-300);
+        }
+        else{
+            this.player.setVelocityX(0);
+        }
+        this.player.anims.play('turn');
+    }
+
+
+
+
+
+    if (this.cursors.up.isDown && this.player.body.blocked.down){
+       
+        this.player.setVelocityY(-380 ); 
+
+
+
+       
+        this.canJump = false;
+
+       
+        this.onWallDroit = false;
+        this.onWallGauche = false;
+
+
+
+
+    }
+
+    if (this.cursors.down.isDown && !this.player.body.touching.down){ 
+        this.player.setVelocityY(450); 
+    } 
+
+    if(this.player.body.blocked.down){
+
+        
+        this.canJump = true;
+
+       
+        this.onWallDroit = false;
+        this.onWallGauche = false;
+    }
+
+
+
+    if(this.player.body.blocked.right && !this.player.body.blocked.down){
+
+        this.onWallDroit = true;
+    }
+
+
+
+    if(this.player.body.blocked.left && !this.player.body.blocked.down){
+        this.onWallGauche = true;
+        
+    }
+
+}
+
+
+
+
+    
+</script>
+</body>
+</html>
